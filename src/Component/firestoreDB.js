@@ -1,7 +1,6 @@
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { database } from "./firebase";
 import { useState, useEffect } from "react";
-import { uid } from "uid";
 
 function FirestoreDB() {
 
@@ -27,7 +26,7 @@ function FirestoreDB() {
         const unsubscribe = onSnapshot(collectionRef, (querySnapshot) => {
             const contactsData = [];
             querySnapshot.forEach((doc) => {
-                contactsData.push(doc.data());
+                contactsData.push({ id: doc.id, ...doc.data() });
             });
             setContacts(contactsData);
         });
@@ -37,19 +36,30 @@ function FirestoreDB() {
     //write
     const writeToDatabase = async () => {
         const db = database;
-        const id = uid();
-        const docRef = await addDoc(collection(db, "contacts"), {
-            id:id,
-            first: first,
-            last: last,
-            number: number
-        });
-        setFirst("");
-        setLast("");
-        setNumber("");
+        if (first != "" && last != "" && number != "") {
+            const docRef = await addDoc(collection(db, "contacts"), {
+                first: first,
+                last: last,
+                number: number
+            });
+            setFirst("");
+            setLast("");
+            setNumber("");
+        }
     }
     //delete
+    const deleteFromDatabase = async (id) => {
+        const db = database;
+        const contactRef = doc(db, "contacts", id);
     
+        try {
+            await deleteDoc(contactRef);
+            console.log("Contact deleted successfully");
+        } catch (error) {
+            console.error("Error deleting contact:", error);
+        }
+    }
+
     return (
         <div className="main_">
             <div className="mainAdd">
@@ -57,33 +67,36 @@ function FirestoreDB() {
                     <h3>Ajouter un contact </h3>
                     <div className="mainAddFirst">
                         <label>first: </label>
-                        <input type='text' value={first} onChange={handleFirstChange} />
+                        <input type='text' value={first} onChange={handleFirstChange} required />
                     </div>
                     <div className="mainAddLast">
                         <label>last: </label>
-                        <input type='text' value={last} onChange={handleLastChange} />
+                        <input type='text' value={last} onChange={handleLastChange} required />
                     </div>
                     <div className="mainAddNumber">
                         <label>number: </label>
-                        <input type='text' value={number} onChange={handleNumberChange} />
+                        <input type='text' value={number} onChange={handleNumberChange} required />
                     </div>
                     <button onClick={writeToDatabase}>submit</button>
                 </div>
             </div>
             <div className="mainList">
                 <h3>Liste des contacts:</h3>
-                {contacts.map((contact) => (
-                    <div>
-                    <hr></hr>
-                        <p> firstName: {contact.first} </p>
-                        <p> lastName: {contact.last} </p>
-                        <p>number: {contact.number} </p>
-                        {/* <div>
-                            <button>update</button>
-                            <button>delete</button>
-                        </div> */}
-                    </div>
-                ))}
+                <div style={{overflow: 'auto', maxHeight: '60vh' }}>
+                    {contacts.map((contact) => (
+                        <div>
+                        <hr></hr>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', paddingRight:'10%' }}>
+                                <div>
+                                    <p> firstName: {contact?.first} </p>
+                                    <p> lastName: {contact?.last} </p>
+                                    <p>number: {contact?.number} </p>
+                                </div>
+                                <button style={{border:'none', backgroundColor:'red', opacity:'0.6', cursor:'pointer', padding:'2px 5px', color:'white', borderRadius:'5px', height:'30px'}} onClick={() => deleteFromDatabase(contact?.id)}>Delete</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
